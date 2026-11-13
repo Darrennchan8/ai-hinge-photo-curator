@@ -23,7 +23,7 @@ real feedback: upload the picks with Hinge's Smart Photos on and let real likes 
 ## Quick start
 
 ```sh
-git clone <repo URL> ai-hinge-photo-curator && cd ai-hinge-photo-curator
+git clone https://github.com/Darrennchan8/ai-hinge-photo-curator.git && cd ai-hinge-photo-curator
 uv sync
 cp .env.example .env                                     # paste your TypeSafe key into .env
 cp config_overrides.example.toml config_overrides.toml   # describe who you want to appeal to
