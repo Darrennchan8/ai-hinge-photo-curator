@@ -1,0 +1,174 @@
+# Default settings. Don't edit this file: put your changes in config_overrides.toml (git-ignored), which
+# only needs the values you change, under the same [section] headers. Paths are relative to the repo.
+
+[paths]
+input = "input"             # Takeout archives and/or loose photos (searched recursively)
+reference = "input/reference"  # optional: 3-5 clear photos of just you; empty = detect your face automatically
+work = "data/work"          # resized working copies (what the judges see)
+thumbs = "data/thumbs"
+judge = "data/judge"        # exact images sent to judges, per size; the gallery shows these
+tmp = "data/tmp"            # scratch for files fetched from rclone remotes; cleared after each batch
+auto_reference = "data/reference-auto.jpg"  # written by prefilter when input/reference is empty
+crops = "data/crops"        # suggested crops of shortlisted photos, full working resolution
+db = "data/curator.db"
+out = "out"
+models = "models"
+
+[persona]
+# Who the judges imagine seeing your profile. Describe the people you want to appeal to, for example
+# "a woman in her 30s on Hinge looking for a long-term relationship (the profile owner is a man)".
+# Changing it starts fresh comparisons: answers to the old wording are kept but no longer used.
+audience = "someone on Hinge who could be interested in the profile owner"
+
+[judge]
+ranker = "jev"              # who does the pairwise ranking: jev, claude, gemini or openai
+classifier = "jev"          # who assigns categories, flags and expression tags (only Jev does all three)
+explainer = ""              # who writes a one-line rationale for the shortlist: claude, openai, or "" for none
+reference_image = ""        # shown to judges as "the profile owner" for group and unlocated photos;
+                            # empty = first file in the reference folder
+image_side = 768            # long side of images sent to judges
+zoom_below = 0.05           # when your face is smaller than this share of the photo's height, judges get a
+zoom_to = 0.07              # portrait crop around you (as you'd zoom in Hinge) where it's this share instead
+zoom_aspect = 0.8           # crop width / height (4:5 portrait)
+concurrency = 4
+explain_per_bucket = 7      # how many top photos per category get a rationale
+
+[final]
+judge = ""                  # optional: claude, gemini or openai re-judges each category's top photos, and its
+                            # order decides those spots; "" = the ranker's order stands
+per_bucket = 7              # finalists per category; each pair is asked in both orders
+opinions = []               # optional: more judges that play the same finalists for the gallery's toggles,
+                            # e.g. ["gemini", "openai"]; they change no ranking
+
+# Each paid judge stops at its budget_usd, counted from the token use recorded in data/curator.db.
+# Prices are list prices when last checked; check them before trusting the cost estimates.
+[jev]
+base_url = "https://api.typesafe.ai"
+model = "jev-1.14.0"
+usd_per_mtok_input = 0.042  # output is free
+budget_usd = 5.0
+
+[claude]
+model = "claude-sonnet-5"
+usd_per_mtok_input = 2.0
+usd_per_mtok_output = 10.0
+budget_usd = 5.0
+
+[gemini]
+base_url = "https://generativelanguage.googleapis.com"
+model = "gemini-4-argon"
+usd_per_mtok_input = 2.0    # as of Nov 2026; it doubles on Dec 1, 2026
+usd_per_mtok_output = 10.0
+budget_usd = 5.0
+
+[openai]
+base_url = "https://api.openai.com"
+model = "gpt-6.1-sol"
+usd_per_mtok_input = 2.0
+usd_per_mtok_output = 10.0
+budget_usd = 5.0
+
+[ingest]
+max_side = 1568             # Jev's per-side maximum
+jpeg_quality = 90
+thumb_side = 400
+min_free_gb = 1.0           # stop ingesting below this much free disk
+
+[rclone]
+binary = "rclone"           # only needed to read photos straight from cloud storage
+batch = 100                 # loose files fetched per round trip
+transfers = 8               # parallel downloads within a batch
+
+[prefilter]
+max_age_years = 8           # drop photos taken longer ago than this (undated photos are kept); 0 = no limit
+match_threshold = 0.363     # SFace cosine similarity; OpenCV's recommended same-person threshold
+solo_match_threshold = 0.28 # looser bar when only one face is in the photo: a face-filtered export already has
+                            # you in every photo, and sunglasses, hoods and profiles land around 0.28-0.36
+keep_unlocated = true       # keep photos where your face isn't found, trusting the export to be of you (as when
+                            # it's filtered to your face in Google Photos); false for a whole camera roll
+detect_score = 0.8          # YuNet face confidence
+auto_references = 10        # typical instances of your face used for matching when auto-detecting
+min_face_frac = 0.0         # cut photos whose face is smaller than this (face height / image height);
+                            # 0 = keep all: small faces get a zoomed crop instead (see [judge] zoom_below)
+min_sharpness = 0.0         # cut photos whose face sharpness (Laplacian variance) is below this; 0 = keep
+                            # all and let the judges' low_quality flag decide (the score tracks texture
+                            # as much as focus, and some soft photos are still usable)
+auto_ref_min_sharpness = 8.0  # only clearly sharp solo faces are used to auto-detect your face
+moment_gap_s = 30           # photos taken within this many seconds of the previous one form a moment
+dup_hamming = 8             # phash distance (of 64 bits) that also links near-identical photos, e.g. edited copies
+workers = 3
+
+[playoff]
+round_robin_max = 8         # (moment, category) groups this small play every pair; larger ones use adaptive matching
+comparisons_per_photo = 6   # budget for the adaptive groups
+
+[rank]
+comparisons_per_photo = 10  # budget; each comparison is asked in both orders
+top_k = 15                  # stop early once this category's top K is settled
+min_rounds = 3
+reuse_prompt_versions = []  # older prompt versions (see `status`) whose answers the ranking may still use
+session_gap_s = 7200        # suggested profile never uses two photos taken within 2 hours of each other
+max_obscured_picks = 1      # suggested profile: at most this many face-obscured photos, and never the first
+max_same_look = 3           # gallery's "Vary expressions" toggle: aim for at most this many picks with one expression
+                            # (big smile, soft smile, ...), searching each category's top [refine] contenders
+age_penalty_per_year = 0.15 # recency bias, in Bradley-Terry logits per year of age: a photo 4 years older
+                            # must be judged better ~65% of the time just to tie. The judges never see dates;
+                            # this is applied to their scores when ranking and picking. 0 = no bias.
+
+[refine]
+contenders = 30             # `refine` gives each category's top photos more comparisons, against new opponents
+comparisons_per_photo = 20
+
+[publish]
+# Optional: `publish` copies the gallery into a folder a web server already serves (www_dir), under a random
+# folder name, so you can open it on your phone. Leave www_dir empty to just open out/index.html.
+www_dir = ""
+base_url = ""               # the URL that www_dir is served at, e.g. "http://my-server.local:8080"
+auto = false                # re-publish after prefilter, pilot, report and explain
+
+[[buckets]]
+name = "headshot"
+description = "Close-up or portrait where the profile owner's face fills much of the frame"
+
+[[buckets]]
+name = "full_body"
+description = "The profile owner's whole body or most of it is visible and the setting is incidental (a street, a room, a plain background)"
+
+[[buckets]]
+name = "upper_body"
+description = "Waist-up or chest-up shot: wider than a close-up, but the whole body isn't visible"
+
+[[buckets]]
+name = "activity_hobby"
+description = "The profile owner doing a sport, hobby, or activity"
+
+[[buckets]]
+name = "social_group"
+description = "The profile owner with friends or family, more than one person is prominent"
+
+[[buckets]]
+name = "travel_scenic"
+description = "A notable place, landmark, or landscape is a big part of the photo; choose this over full_body even when the whole body is visible"
+
+[[buckets]]
+name = "other"
+description = "None of the above"
+
+# Flags: "hard" flags above hard_threshold drop a photo from ranking; soft flags are shown as badges.
+[flags]
+hard_threshold = 0.85       # the classifier's probability at which a hard flag drops the photo
+badge_threshold = 0.75      # a soft flag shows as a gallery badge at this probability
+
+[flags.hard]
+screen_or_print = "This is a photo of a screen, a printed photo, or a screenshot rather than a direct photo"
+low_quality = "The photo is low quality: blurry, grainy, very dark, or badly overexposed"
+
+[flags.soft]
+# Soft, not hard: in testing Jev read squinting smiles and turned-away faces as closed eyes, and most
+# "face obscured" photos were sunglasses or headscarf travel shots worth keeping. Pairwise judging already
+# prefers a clearly visible face, and the profile picker limits obscured picks.
+face_obscured = "The profile owner's face is substantially hidden, for example by sunglasses, a hat brim, a mask, a hand, or deep shadow"
+eyes_closed = "The profile owner's eyes are closed or mid-blink"
+others_dominate = "Someone other than the profile owner is the main subject of the photo"
+mirror_selfie = "This is a mirror selfie"
+partner_vibe = "The profile owner is in a romantic or intimate pose with another person"

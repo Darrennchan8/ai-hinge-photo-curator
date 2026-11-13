@@ -1,0 +1,18 @@
+# Copy this file to config_overrides.toml (git-ignored) and change what you like. Anything you leave out
+# keeps its value from config_base.toml, which lists every setting.
+
+[persona]
+# Who the judges imagine seeing your profile. Be specific: it changes which photos win.
+audience = "a woman in her 30s on Hinge looking for a long-term relationship (the profile owner is a man)"
+
+# Optional: more judges. Each needs its key in .env.
+# [final]
+# judge = "claude"                 # re-judges each category's top 7; its order decides those spots
+# opinions = ["gemini", "openai"]  # extra views of the same finalists, for the gallery's toggles
+#
+# [judge]
+# explainer = "openai"             # one-line rationale for each shortlisted photo (claude or openai)
+
+# Spending caps per judge, in US dollars.
+# [jev]
+# budget_usd = 5.0

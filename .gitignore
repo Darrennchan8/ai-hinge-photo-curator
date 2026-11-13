@@ -1,0 +1,15 @@
+# API keys and your own settings
+.env
+config_overrides.toml
+
+# Your photos and everything derived from them
+input/
+data/
+out/
+
+# Downloaded on first use by `prefilter`
+models/
+
+.venv/
+__pycache__/
+.pytest_cache/
