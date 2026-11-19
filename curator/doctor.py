@@ -6,13 +6,13 @@ import sys
 from .config import Config
 
 KEYS = {"jev": "TYPESAFE_API_KEY", "claude": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY",
-        "openai": "OPENAI_API_KEY"}
+        "gemini_decision": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY"}
 CAN = {  # what each role needs a judge to do, and who can
-    "ranker": {"jev", "claude", "gemini", "openai", "fake"},
-    "classifier": {"jev", "fake"},
+    "ranker": {"jev", "gemini_decision", "claude", "gemini", "openai", "fake"},
+    "classifier": {"jev", "gemini_decision", "fake"},
     "explainer": {"claude", "openai", "fake"},
-    "final judge": {"claude", "gemini", "openai", "jev", "fake"},
-    "opinion": {"claude", "gemini", "openai", "jev", "fake"},
+    "final judge": {"claude", "gemini", "openai", "jev", "gemini_decision", "fake"},
+    "opinion": {"claude", "gemini", "openai", "jev", "gemini_decision", "fake"},
 }
 
 
@@ -62,8 +62,8 @@ def run(cfg: Config) -> int:
         report(False, "[final] opinions need a [final] judge")
 
     print("API keys (from the environment or .env)")
-    for name in sorted(used & set(KEYS)):
-        report(bool(cfg.secret(KEYS[name])), f"{KEYS[name]} for {name}")
+    for key in sorted({KEYS[name] for name in used & set(KEYS)}):
+        report(bool(cfg.secret(key)), f"{key} for {', '.join(sorted(n for n in used if KEYS.get(n) == key))}")
 
     print("Photos")
     from .images import PHOTO_EXTS

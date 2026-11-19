@@ -5,6 +5,11 @@
 # Who the judges imagine seeing your profile. Be specific: it changes which photos win.
 audience = "a woman in her 30s on Hinge looking for a long-term relationship (the profile owner is a man)"
 
+# Optional: Gemini Decision 1 in Jev's place, with GEMINI_API_KEY in .env instead of a TypeSafe key.
+# [judge]
+# ranker = "gemini_decision"
+# classifier = "gemini_decision"
+
 # Optional: more judges. Each needs its key in .env.
 # [final]
 # judge = "claude"                 # re-judges each category's top 7; its order decides those spots

@@ -56,13 +56,16 @@ def _hint(row, crop=None) -> str:
     return hint
 
 
+PAID = ("jev", "gemini_decision", "claude", "gemini", "openai")
+
+
 class BudgetExceeded(Exception):
     pass
 
 
 def spent(cfg: Config, db: DB, judge: str) -> float:
     """Dollars recorded so far for a paid judge, from token counts and config prices."""
-    if judge not in ("jev", "claude", "gemini", "openai"):
+    if judge not in PAID:
         return 0.0
     tin, tout = db.one(
         "SELECT (SELECT COALESCE(SUM(tokens_in), 0) FROM comparisons WHERE judge = :j)"

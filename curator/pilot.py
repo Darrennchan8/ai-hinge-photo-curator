@@ -72,13 +72,9 @@ def _hours(cfg: Config, r: dict, calls: int) -> float:
 
 
 def _cost(cfg: Config, judge: str, r: dict, calls: int) -> float:
-    tokens_in = calls * r["tokens_in"]
-    if judge == "jev":
-        return tokens_in * cfg["jev"]["usd_per_mtok_input"] / 1e6
-    if judge == "claude":
-        return (tokens_in * cfg["claude"]["usd_per_mtok_input"]
-                + calls * r["tokens_out"] * cfg["claude"]["usd_per_mtok_output"]) / 1e6
-    return 0.0
+    price = cfg.raw.get(judge, {})
+    return calls * (r["tokens_in"] * price.get("usd_per_mtok_input", 0)
+                    + r["tokens_out"] * price.get("usd_per_mtok_output", 0)) / 1e6
 
 
 def _classifications(cfg: Config, db: DB, judges: list[str], ids: list[str]) -> dict | None:

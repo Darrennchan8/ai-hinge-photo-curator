@@ -1,4 +1,4 @@
-"""Check the request shapes sent to Jev and Claude without calling either API."""
+"""Check the request shapes sent to the judges without calling any API."""
 
 import base64
 import json
@@ -202,3 +202,49 @@ def test_openai_explain_request_and_answer(cfg, monkeypatch):
     assert sum(part["type"] == "input_image" for part in body["input"][0]["content"]) == 1
     assert cfg["persona"]["audience"] in body["input"][0]["content"][-1]["text"]
     assert (reason, crop, usage) == ("Clear, warm smile.", None, (50, 20))
+
+
+def decision(cfg, monkeypatch, answers):
+    from curator.judges import gemini_decision
+    sent = []
+
+    def handler(request):
+        sent.append((request, json.loads(request.content)))
+        return httpx.Response(200, json={"answers": answers, "usage": {"total_input_tokens": 2278,
+                                                                       "total_output_tokens": 0}})
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    judge = gemini_decision.GeminiDecisionJudge(cfg)
+    judge.http = httpx.Client(base_url="https://generativelanguage.googleapis.com",
+                              transport=httpx.MockTransport(handler), headers=judge.http.headers)
+    return judge, sent
+
+
+def test_gemini_decision_compare_request(cfg, monkeypatch):
+    judge, sent = decision(cfg, monkeypatch, {"better": {"type": "choice", "choice": "B", "confidence": 0.7,
+                                                         "probabilities": {"A": 0.3, "B": 0.7}}})
+    v = judge.compare(photo(cfg, "a"), photo(cfg, "b", needs_ref=True))
+    req, body = sent[0]
+    assert req.url.path == "/v1beta/decisions"
+    assert req.headers["x-goog-api-key"] == "test-key"
+    assert body["model"] == "gemini-decision-1" and set(body) == {"model", "input", "questions"}
+    kinds = [block["type"] for block in body["input"]]
+    assert kinds == ["text", "image", "text", "image", "text", "image", "text"]  # reference, A, B
+    assert body["input"][0]["text"].startswith("For reference only")
+    assert all(b["mime_type"] == "image/jpeg" for b in body["input"] if b["type"] == "image")
+    q = body["questions"]["better"]
+    assert q["type"] == "choice" and set(q["criteria"]) == {"A", "B"}
+    assert v.p_first == pytest.approx(0.3) and v.tokens_in == 2278 and v.tokens_out == 0
+
+
+def test_gemini_decision_classify_request(cfg, monkeypatch):
+    answers = {"bucket": {"type": "choice", "choice": "full_body", "confidence": 0.8,
+                          "probabilities": {b: (0.8 if b == "full_body" else 0.03) for b in cfg.buckets}}}
+    answers |= {f"flag_{f}": {"type": "noul", "noul": 0.2, "confidence": 0.8} for f in cfg.flags}
+    judge, sent = decision(cfg, monkeypatch, answers)
+    c = judge.classify(photo(cfg, "a"))
+    _, body = sent[0]
+    assert [b["type"] for b in body["input"]] == ["text", "image", "text"]
+    assert body["questions"]["bucket"]["criteria"] == cfg.buckets
+    assert all(body["questions"][f"flag_{f}"]["type"] == "noul" for f in cfg.flags)
+    assert c.bucket == "full_body" and c.flags["low_quality"] == pytest.approx(0.2) and c.tokens == 2278

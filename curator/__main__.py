@@ -44,7 +44,7 @@ def main() -> None:
     p = sub.add_parser("pilot", help="compare two judges on the same random pairs")
     p.add_argument("--pairs", type=int, default=150)
     p.add_argument("--photos", type=int, default=40, help="photos to classify with each judge")
-    p.add_argument("--judges", default="jev,claude")
+    p.add_argument("--judges", default="jev,claude", help="comma-separated, e.g. jev,gemini_decision")
     sub.add_parser("status", help="show progress and spend so far")
     args = ap.parse_args()
 
@@ -150,8 +150,8 @@ def status(cfg, db) -> None:
         mark = " (current)" if r["v"] == current else ""
         print(f"compare[{r['judge']}, prompt {r['v']}{mark}]: {r['n']} calls, "
               f"{r['ti'] or 0:,} in / {r['tout'] or 0:,} out tokens")
-    from .judging import spent
-    for judge in ("jev", "claude", "gemini", "openai"):
+    from .judging import PAID, spent
+    for judge in PAID:
         if used := spent(cfg, db, judge):
             print(f"{judge} spend: ~${used:.2f} of ${cfg[judge]['budget_usd']:.2f} budget")
 

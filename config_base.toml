@@ -21,8 +21,8 @@ models = "models"
 audience = "someone on Hinge who could be interested in the profile owner"
 
 [judge]
-ranker = "jev"              # who does the pairwise ranking: jev, claude, gemini or openai
-classifier = "jev"          # who assigns categories, flags and expression tags (only Jev does all three)
+ranker = "jev"              # who does the pairwise ranking: jev, gemini_decision, claude, gemini or openai
+classifier = "jev"          # who assigns categories, flags and expression tags: jev or gemini_decision
 explainer = ""              # who writes a one-line rationale for the shortlist: claude, openai, or "" for none
 reference_image = ""        # shown to judges as "the profile owner" for group and unlocated photos;
                             # empty = first file in the reference folder
@@ -34,7 +34,7 @@ concurrency = 4
 explain_per_bucket = 7      # how many top photos per category get a rationale
 
 [final]
-judge = ""                  # optional: claude, gemini or openai re-judges each category's top photos, and its
+judge = ""                  # optional: claude, gemini or openai (or jev/gemini_decision) re-judges each category's top photos, and its
                             # order decides those spots; "" = the ranker's order stands
 per_bucket = 7              # finalists per category; each pair is asked in both orders
 opinions = []               # optional: more judges that play the same finalists for the gallery's toggles,
@@ -46,6 +46,12 @@ opinions = []               # optional: more judges that play the same finalists
 base_url = "https://api.typesafe.ai"
 model = "jev-1.14.0"
 usd_per_mtok_input = 0.042  # output is free
+budget_usd = 5.0
+
+[gemini_decision]           # Gemini Decision 1: an alternative to Jev that uses GEMINI_API_KEY
+base_url = "https://generativelanguage.googleapis.com"
+model = "gemini-decision-1"
+usd_per_mtok_input = 0.10   # output is free; a 768 px photo is about 1,060 tokens
 budget_usd = 5.0
 
 [claude]

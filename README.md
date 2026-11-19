@@ -13,7 +13,8 @@ real feedback: upload the picks with Hinge's Smart Photos on and let real likes 
 
 - **Python 3.11+** and [uv](https://docs.astral.sh/uv/getting-started/installation/), on macOS, Linux or Windows.
 - **A TypeSafe API key** for [Jev](https://typesafe.ai), which does the ranking. Image input is still an
-  experimental Jev feature. A run over about 2,500 photos cost about $3.
+  experimental Jev feature. A run over about 2,500 photos cost about $3. Or a Gemini API key, to use
+  [Gemini Decision](#gemini-decision-instead-of-jev) instead.
 - **Optional:** Anthropic, Gemini and/or OpenAI keys for a second opinion and written rationales
   (see [More judges](#optional-more-judges)).
 - **Your photos:** a Google Takeout export of the photos you're in ([how to export them](docs/google-takeout.md)).
@@ -76,10 +77,27 @@ explainer = "openai"             # a one-line rationale and crop suggestion for 
 Then run `uv run python -m curator run` again; only the new steps make calls. Each extra judge cost
 roughly $2–5 on a full run.
 
+## Gemini Decision instead of Jev
+
+[Gemini Decision 1](https://blog.google/innovation-and-ai/technology/developers-tools/gemini-decisions-api/)
+answers the same way as Jev, with a probability for each option, so it can do every step Jev does. It
+only needs `GEMINI_API_KEY`. Add this to `config_overrides.toml`:
+
+```toml
+[judge]
+ranker = "gemini_decision"
+classifier = "gemini_decision"
+```
+
+In a test on one person's photos, it was a closer match to Claude, Gemini and OpenAI than Jev was, but a
+full run costs more: about $5 (raise `[gemini_decision] budget_usd`), against about $3 for Jev. See
+[How it works](docs/how-it-works.md#the-judges) for the numbers.
+
 ## Privacy
 
 Your photos stay on your computer, except for resized copies (768 px) sent to the judges you turn on.
-Requests to OpenAI and Gemini ask them not to store anything; check each provider's data policy.
+Requests to OpenAI and Gemini ask them not to store anything. The Gemini Decisions API has no such
+option, and Google's free tier may use requests to improve its products. Check each provider's data policy.
 `.env`, `config_overrides.toml`, `input/`, `data/` and `out/` are git-ignored.
 
 ## More

@@ -293,7 +293,7 @@ def _soft_badges(cfg: Config, flags_json: str) -> str:
                    for f in cfg["flags"]["soft"] if flags.get(f, 0) >= cfg["flags"]["badge_threshold"])
 
 
-LABELS = {"jev": "Jev", "claude": "Claude", "gemini": "Gemini", "openai": "OpenAI", "fake": "Fake"}
+LABELS = {"jev": "Jev", "gemini_decision": "Gemini Decision", "claude": "Claude", "gemini": "Gemini", "openai": "OpenAI", "fake": "Fake"}
 
 
 def gallery_data(cfg: Config, db: DB, links: _Gallery) -> dict:

@@ -3,20 +3,22 @@
 `run` does these steps in order. Each is also its own command (`uv run python -m curator <step>`), and
 each skips work it has already done.
 
-| Step | What it does | Paid? |
+| Step | What it does | Who |
 |---|---|---|
 | `ingest` | Reads archives and photos from `input/` (and any paths you pass), applies EXIF rotation, and saves 1568 px working copies in `data/work/`. Dates and Google Photos links come from Takeout's `.json` files, else from the photo's metadata. | No |
 | `prefilter` | Finds faces with OpenCV (YuNet + SFace), works out which one is you from `input/reference/` (or from the most common face), and drops old photos, plus tiny or blurry faces if you set those thresholds. Groups photos taken seconds apart into "moments". Writes `out/prefilter.html`. | No |
-| `classify` | Sorts each photo into a category (headshot, full body, upper body, activity, social, travel, other) and flags problems. "Hard" flags (screenshots, very low quality) drop a photo; "soft" ones (sunglasses, mirror selfie…) show as badges. | Jev |
-| `playoff` | Keeps the best photo of each category from each moment, so a burst of ten near-identical shots doesn't crowd a category. | Jev |
-| `rank` | Ranks each category with pairwise comparisons, each asked in both orders, and fits a [Bradley-Terry](https://en.wikipedia.org/wiki/Bradley%E2%80%93Terry_model) model. It picks informative pairs and stops once the top 15 settles. | Jev |
-| `fullbody`, `headshot` | A direct yes/no check that moves waist-up shots out of those two categories, then re-ranks both. | Jev |
-| `refine` | Gives each category's top 30 extra comparisons, since that's where close calls matter. | Jev |
+| `classify` | Sorts each photo into a category (headshot, full body, upper body, activity, social, travel, other) and flags problems. "Hard" flags (screenshots, very low quality) drop a photo; "soft" ones (sunglasses, mirror selfie…) show as badges. | Classifier |
+| `playoff` | Keeps the best photo of each category from each moment, so a burst of ten near-identical shots doesn't crowd a category. | Ranker |
+| `rank` | Ranks each category with pairwise comparisons, each asked in both orders, and fits a [Bradley-Terry](https://en.wikipedia.org/wiki/Bradley%E2%80%93Terry_model) model. It picks informative pairs and stops once the top 15 settles. | Ranker |
+| `fullbody`, `headshot` | A direct yes/no check that moves waist-up shots out of those two categories, then re-ranks both. | Classifier |
+| `refine` | Gives each category's top 30 extra comparisons, since that's where close calls matter. | Ranker |
 | `final` | Optional: `[final] judge` plays every pair among each category's top 7, and its order decides those spots. | Optional judge |
 | `opinion` | Optional: `[final] opinions` judges play the same finalists, shown as gallery toggles. | Optional judges |
-| `looks` | Tags each ranked photo's expression, gaze and pose, for the gallery's **Vary expressions** toggle. | Jev |
+| `looks` | Tags each ranked photo's expression, gaze and pose, for the gallery's **Vary expressions** toggle. | Classifier |
 | `explain` | Optional: a one-line rationale and crop suggestion for each shortlisted photo. | Optional judge |
 | `report` | Writes `out/index.html`. | No |
+
+The ranker and classifier are Jev unless you set `[judge] ranker` and `classifier`.
 
 Other commands:
 
@@ -37,8 +39,32 @@ to Hinge.
 - **Jev** (TypeSafe) is the default for everything. It returns a probability for each answer rather than
   a bare pick, so a near tie counts as a near tie. That suits Bradley-Terry, and it's cheap enough for
   tens of thousands of comparisons.
+- **Gemini Decision 1** can take Jev's place as ranker, classifier or both. It answers the same way, with
+  a probability for each option.
 - **Claude, Gemini and OpenAI** are optional. They're too costly to rank everything, so they only
   re-judge each category's finalists.
+
+### Jev and Gemini Decision compared
+
+One person's 2,183 photos, November 2026, each judge with the same prompt:
+
+| | Jev 1.14 | Gemini Decision 1 |
+|---|---|---|
+| Agrees with Claude / Gemini / OpenAI on the 105 finalist pairs | 74% / 66% / 74% | 79% / 76% / 77% |
+| Agrees with the three's majority | 78% | 81% |
+| Bias toward the photo shown first (logits) | −0.45 | −0.12 |
+| Pairs it calls decisively (margin over 0.2) | 73% | 45% |
+| Input tokens per comparison | ~3,600 | ~2,800 |
+| Cost per 1,000 comparisons | ~$0.15 | ~$0.28 |
+| Median time per call | 0.2 s | 0.8 s |
+
+- **Rankings:** re-ranking the headshot, full body, upper body and activity categories with Decision
+  alone (5,650 calls, $1.61) gave rankings that correlate 0.76–0.87 with Jev's.
+  - Both picked the same top headshot.
+  - Their top 7s shared 1–5 photos, or 4–6 outings when counted by outing.
+- **Categories:** on 100 photos, the two judges put 80% in the same category.
+  - Decision flagged far fewer closed eyes, 9 against Jev's 30. Jev often reads squinting smiles as
+    closed eyes.
 
 ## Scores and the gallery
 
